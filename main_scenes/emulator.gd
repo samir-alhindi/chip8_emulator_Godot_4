@@ -29,11 +29,22 @@ func _ready() -> void:
 	screen[0][0] = 1
 	screen[12][14] = 1
 	# Load test upcodes into RAM:
-	load_rom_into_ram(from16to8(0x00E0))
-	execute_opcode()
+	var splash_screen: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\1-chip8-logo.ch8") 
+	load_rom_into_ram(splash_screen)
+	for i in range(0, splash_screen.size(), 2):
+		execute_opcode()
+		program_counter += 2
 	# put test values in registers:
 	for i:int in range(16):
 		registers[i] = i
+
+func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
+	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
+	ROM.big_endian = true
+	var ROM_opcodes: PackedByteArray = []
+	while ROM.get_position() < ROM.get_length():
+		ROM_opcodes.append(ROM.get_8())
+	return ROM_opcodes
 
 func load_rom_into_ram(ROM: PackedByteArray) -> void:
 	var offset: int = 0x200
@@ -52,7 +63,7 @@ func execute_opcode() -> void:
 				0x0000: # 8XY0: set VX to the value of VY.
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F]
 				_:
-					print("Error: {opcode} is Unsupported Opcode.")
+					print("ERROR: 0x%x is unknown opcode." % opcode)
 					return
 
 		0x0000: #1st nibble is '0':
@@ -60,7 +71,7 @@ func execute_opcode() -> void:
 				for array: PackedByteArray in screen:
 					array.fill(0)
 		_:
-			print("Error: {opcode} is Unsupported Opcode.")
+			print("ERROR: 0x%x is unknown opcode." % opcode)
 			return
 
 func from16to8(Opcode: int) -> PackedByteArray:
