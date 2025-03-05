@@ -29,14 +29,14 @@ func _ready() -> void:
 	screen[0][0] = 1
 	screen[12][14] = 1
 	# Load test upcodes into RAM:
-	var splash_screen: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\1-chip8-logo.ch8") 
+	var splash_screen: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\2-ibm-logo.ch8") 
 	load_rom_into_ram(splash_screen)
 	for i in range(0, splash_screen.size(), 2):
 		execute_opcode()
 		program_counter += 2
 	# put test values in registers:
-	for i:int in range(16):
-		registers[i] = i
+	#for i:int in range(16):
+		#registers[i] = i
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -58,7 +58,23 @@ func execute_opcode() -> void:
 
 	# Decode Opcode:
 	match opcode & 0xF000: # Decode the Opcode type from the 1st nibble.
-		0x8000: #1st nibble is '8':
+
+		0x0000: #1st nibble is '0':
+			if opcode == 0x00E0: # 00E0: Clears the screen.
+				for array: PackedByteArray in screen:
+					array.fill(0)
+		
+		0x1000: # 1st nibble is '1':
+			program_counter = opcode & 0x0FFF # 1NNN: Jumps to address NNN.
+
+		0x6000: #1st nibble is '6': 
+			registers[opcode >> 8 & 0x0F] = opcode & 0x00FF # 6XNN: Sets VX to NN
+		
+		0x7000: #1st nibble is '7':
+			if registers[opcode >> 8 & 0x0F] >= 256: return
+			registers[opcode >> 8 & 0x0F] += opcode & 0x00FF # 7XNN: Adds NN to VX (carry flag is not changed).
+
+		0x8000: # 1st nibble is '8':
 			match opcode & 0x000F: # Still contains more data in the last nibble.
 				0x0000: # 8XY0: set VX to the value of VY.
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F]
@@ -66,10 +82,24 @@ func execute_opcode() -> void:
 					print("ERROR: 0x%x is unknown opcode." % opcode)
 					return
 
-		0x0000: #1st nibble is '0':
-			if opcode == 0x00E0: # 00E0: Clears the screen.
-				for array: PackedByteArray in screen:
-					array.fill(0)
+		0xA000: # 1st nibble is 'A'
+			address_register = opcode & 0x0FFF
+		
+		0xD000: # 1st nibble is 'D':
+			# DXYN: Draws a sprite at coordinate (VX, VY)...
+			registers[0xF] = 0 # VF register must be cleared first.
+			var x_pos: int = registers[opcode >> 8 & 0xF] % 64
+			var y_pos: int = registers[opcode >> 4 & 0xF] % 32
+			for N: int in range(opcode & 0x000F):
+				var Nth_byte: int = RAM[address_register + N]
+				for i: int in range(8):
+					if x_pos >= 64: break # stop drawing when reaching end of screen.
+					screen[x_pos][y_pos] = screen[x_pos][y_pos] ^ (Nth_byte << i & 0b10000000)
+					x_pos += 1
+				y_pos += 1
+				x_pos -= 8
+				if y_pos >= 32: break # stop drawing when reaching bottom of screen.
+				_draw()
 		_:
 			print("ERROR: 0x%x is unknown opcode." % opcode)
 			return
@@ -80,6 +110,6 @@ func from16to8(Opcode: int) -> PackedByteArray:
 func _draw() -> void:
 	for x: int in range(screen.size()):
 		for y: int in range(screen[x].size()):
-			if screen[x][y] == 1:
+			if screen[x][y] != 0:
 				var pixel: Rect2 = Rect2(Vector2(x, y), Vector2(1, 1))
 				draw_rect(pixel, Color.WHITE, true)
