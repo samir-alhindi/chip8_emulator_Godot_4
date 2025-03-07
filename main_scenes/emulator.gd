@@ -5,7 +5,7 @@ var program_counter: int = 0x200
 var adress_pointer: int = 0x0000
 
 var registers: PackedByteArray = []
-var address_register: int = 0
+var index_register: int = 0
 
 var stack: Array = []
 var stack_pointer: int = 0
@@ -26,12 +26,10 @@ func _ready() -> void:
 		array.resize(32)
 		array.fill(0x0000)
 	
-	screen[0][0] = 1
-	screen[12][14] = 1
 	# Load test upcodes into RAM:
-	var splash_screen: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\2-ibm-logo.ch8") 
-	load_rom_into_ram(splash_screen)
-	for i in range(0, splash_screen.size(), 2):
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\3-corax+.ch8") 
+	load_rom_into_ram(rom)
+	for i in range(0, rom.size(), 2):
 		execute_opcode()
 		program_counter += 2
 	# put test values in registers:
@@ -63,27 +61,103 @@ func execute_opcode() -> void:
 			if opcode == 0x00E0: # 00E0: Clears the screen.
 				for array: PackedByteArray in screen:
 					array.fill(0)
+			
+			elif opcode == 0x00EE: # 00EE: Returns from a subroutine.
+				program_counter = stack.pop_back()
+				stack_pointer -= 1
 		
 		0x1000: # 1st nibble is '1':
-			program_counter = opcode & 0x0FFF # 1NNN: Jumps to address NNN.
+			# 1NNN: Jumps to address NNN.
+			program_counter = (opcode & 0x0FFF) - 2 # Subtract 2 so it our PC increment doesn't ruin our address.
+		
+		0x2000: # 1st nibble is '2':
+			# 2NNN: Calls subroutine at NNN.
+			stack.append(program_counter) # Push current PC to stack so we can return later.
+			stack_pointer += 1
+			program_counter = (opcode & 0x0FFF) - 2 # Subtract 2 so it our PC increment doesn't ruin our address.
+		
+		0x3000: # 1st nibble is '3':
+			 # 3XNN: Skips the next instruction if VX equals NN.
+			if registers[opcode >> 8 & 0x0F] == opcode & 0x00FF:
+				program_counter += 2
+		
+		0x4000: # 1st nibble is '4':
+			# 4XNN: Skips the next instruction if VX does NOT equal NN.
+			if registers[opcode >> 8 & 0x0F] != opcode & 0x00FF:
+				program_counter += 2
+		
+		0x5000: # 1st nibble is '4':
+			# 5XY0: Skips the next instruction if VX equals VY.
+			if registers[opcode >> 8 & 0x0F] == registers[opcode >> 4 & 0x00F]:
+				program_counter += 2
 
 		0x6000: #1st nibble is '6': 
 			registers[opcode >> 8 & 0x0F] = opcode & 0x00FF # 6XNN: Sets VX to NN
 		
 		0x7000: #1st nibble is '7':
-			if registers[opcode >> 8 & 0x0F] >= 256: return
 			registers[opcode >> 8 & 0x0F] += opcode & 0x00FF # 7XNN: Adds NN to VX (carry flag is not changed).
 
 		0x8000: # 1st nibble is '8':
 			match opcode & 0x000F: # Still contains more data in the last nibble.
 				0x0000: # 8XY0: set VX to the value of VY.
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F]
+				
+				0x0001: # 8XY1: Sets VX to VX or VY. (bitwise OR operation).
+					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] | registers[opcode >> 4 & 0x00F]
+				
+				0x0002: # 8XY2: Sets VX to VX and VY. (bitwise AND operation).
+					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] & registers[opcode >> 4 & 0x00F]
+				
+				0x0003: # 8XY3: Sets VX to VX XOR VY.
+					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] ^ registers[opcode >> 4 & 0x00F]
+				
+				0x0004:
+					# 8XY4: Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
+					registers[opcode >> 8 & 0x0F] += registers[opcode >> 4 & 0xF]
+					if registers[opcode >> 8 & 0x0F] >= 256: # Check if there's overflow.
+						registers[0xF] = 1 # Set VF to 1 if there is
+					else:
+						registers[0xF] = 0 # Set VF to 0 if there's no overflow.
+				
+				0x0005:
+					# 8XY5: VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not.
+					registers[opcode >> 8 & 0x0F] -= registers[opcode >> 4 & 0x0F]
+					if registers[opcode >> 8 & 0x0F] < 0: # Check if there's an underflow.
+						registers[0x0F] = 0 # There is and VF is set to 0.
+					else:
+						registers[0x0F] = 1 # There isn't and VF is set to 1.
+				
+				0x0006:
+					# 8XY6: vX = vY >> 1, Set VF to the bit that was shifted out.
+					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F] >> 1
+					registers[0xF] = registers[opcode >> 4 & 0x0F] & 0x1 # Set VF to the bit that was shifted out
+				
+				0x0007:
+					# 8XY7: Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).
+					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x00F] - registers[opcode >> 8 & 0x0F]
+					if registers[opcode >> 8 & 0x0F] < 0:
+						registers[0xF] = 0
+					else:
+						registers[0xF] = 1
+				
+				
+				0x000E:
+					# 8XYE: vX = vY << 1, Set VF to the bit that was shifted out.
+					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F] << 1
+					registers[0xF] = registers[opcode >> 4 & 0x0F] & 0x1 # Set VF to the bit that was shifted out
+				
+				
 				_:
 					print("ERROR: 0x%x is unknown opcode." % opcode)
 					return
+		
+		0x9000: # 1st nibble is '9':
+			# 9XY0: Skips the next instruction if VX does not equal VY.
+			if registers[opcode >> 8 & 0x0F] != registers[opcode >> 4 & 0x00F]:
+				program_counter += 2
 
 		0xA000: # 1st nibble is 'A'
-			address_register = opcode & 0x0FFF
+			index_register = opcode & 0x0FFF
 		
 		0xD000: # 1st nibble is 'D':
 			# DXYN: Draws a sprite at coordinate (VX, VY)...
@@ -91,15 +165,31 @@ func execute_opcode() -> void:
 			var x_pos: int = registers[opcode >> 8 & 0xF] % 64
 			var y_pos: int = registers[opcode >> 4 & 0xF] % 32
 			for N: int in range(opcode & 0x000F):
-				var Nth_byte: int = RAM[address_register + N]
+				var Nth_byte: int = RAM[index_register + N]
 				for i: int in range(8):
 					if x_pos >= 64: break # stop drawing when reaching end of screen.
 					screen[x_pos][y_pos] = screen[x_pos][y_pos] ^ (Nth_byte << i & 0b10000000)
+					if screen[x_pos][y_pos] ^ (Nth_byte << i & 0b10000000) != 0: # Check if pixel collision.
+						registers[0xF] = 1 # add 1 to the flag register VF.
 					x_pos += 1
 				y_pos += 1
 				x_pos -= 8
 				if y_pos >= 32: break # stop drawing when reaching bottom of screen.
 				_draw()
+				
+		0xF000: # 1st nibble is 'F':
+			match opcode & 0x00FF: # Last 2 nibbles still contain more data.
+				0x0065: # FX65:
+					var num_of_registers_to_fill: int = opcode >> 8 & 0x0F
+					for i: int in range(num_of_registers_to_fill + 1):
+						registers[i] = RAM[index_register + i]
+				
+				0x0055: # FX55:
+					var num_of_times_to_iterate: int = opcode >> 8 & 0x0F
+					for i: int in range(num_of_times_to_iterate + 1):
+						RAM[index_register + i] = registers[i]
+			
+			
 		_:
 			print("ERROR: 0x%x is unknown opcode." % opcode)
 			return
