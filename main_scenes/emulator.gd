@@ -15,6 +15,9 @@ var screen: Array[PackedByteArray] = []
 var delay_timer: int = 0
 var sound_timer: int = 0
 
+var rom_3_path: StringName = "3-corax+.ch8"
+var rom_4_path: StringName = "4-flags.ch8"
+
 func _ready() -> void:
 	# Init RAM, Registers and screen:
 	RAM.resize(4 * 1024)
@@ -27,14 +30,20 @@ func _ready() -> void:
 		array.fill(0x0000)
 	
 	# Load test upcodes into RAM:
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\3-corax+.ch8") 
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + rom_4_path) 
 	load_rom_into_ram(rom)
-	for i in range(0, rom.size(), 2):
+
+#func _process(delta: float) -> void:
+		#for i: int in range(10):
+			#execute_opcode()
+			#program_counter += 2
+		#queue_redraw()
+
+func _physics_process(delta: float) -> void:
+	for i: int in range(5):
 		execute_opcode()
 		program_counter += 2
-	# put test values in registers:
-	#for i:int in range(16):
-		#registers[i] = i
+	queue_redraw()
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -167,18 +176,26 @@ func execute_opcode() -> void:
 			for N: int in range(opcode & 0x000F):
 				var Nth_byte: int = RAM[index_register + N]
 				for i: int in range(8):
-					if x_pos >= 64: break # stop drawing when reaching end of screen.
+					if x_pos >= 64: x_pos = x_pos % 64 # wrap coordinates when reaching end of screen.
 					screen[x_pos][y_pos] = screen[x_pos][y_pos] ^ (Nth_byte << i & 0b10000000)
 					if screen[x_pos][y_pos] ^ (Nth_byte << i & 0b10000000) != 0: # Check if pixel collision.
 						registers[0xF] = 1 # add 1 to the flag register VF.
 					x_pos += 1
 				y_pos += 1
 				x_pos -= 8
-				if y_pos >= 32: break # stop drawing when reaching bottom of screen.
+				if y_pos >= 32: y_pos = y_pos % 32 # wrap coordinates when reaching end of screen.
 				_draw()
 				
 		0xF000: # 1st nibble is 'F':
 			match opcode & 0x00FF: # Last 2 nibbles still contain more data.
+				0x0033: # FX33:
+					var number: int = registers[opcode >> 8 & 0x0F]
+					RAM[index_register + 2] = number % 10
+					number = floor(number / 10)
+					RAM[index_register + 1] = number % 10
+					number = floor(number / 10)
+					RAM[index_register] = number
+				
 				0x0065: # FX65:
 					var num_of_registers_to_fill: int = opcode >> 8 & 0x0F
 					for i: int in range(num_of_registers_to_fill + 1):
@@ -189,6 +206,8 @@ func execute_opcode() -> void:
 					for i: int in range(num_of_times_to_iterate + 1):
 						RAM[index_register + i] = registers[i]
 			
+				0x001E: # FX1E: Adds VX to I. VF is not affected.
+					index_register += registers[opcode >> 8 & 0x0F]
 			
 		_:
 			print("ERROR: 0x%x is unknown opcode." % opcode)
