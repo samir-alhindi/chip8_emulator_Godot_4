@@ -15,8 +15,13 @@ var screen: Array[PackedByteArray] = []
 var delay_timer: int = 0
 var sound_timer: int = 0
 
+var instruction_rate: int = 500  # Instructions per second
+var time_accumulator: float = 0.0
+
+var pong_path: StringName = "Pong (1 player).ch8"
 var rom_3_path: StringName = "3-corax+.ch8"
 var rom_4_path: StringName = "4-flags.ch8"
+var rom_6_path: StringName = "6-keypad.ch8"
 
 func _ready() -> void:
 	# Init RAM, Registers and screen:
@@ -30,19 +35,15 @@ func _ready() -> void:
 		array.fill(0x0000)
 	
 	# Load test upcodes into RAM:
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + rom_4_path) 
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + rom_6_path) 
 	load_rom_into_ram(rom)
 
-#func _process(delta: float) -> void:
-		#for i: int in range(10):
-			#execute_opcode()
-			#program_counter += 2
-		#queue_redraw()
-
-func _physics_process(delta: float) -> void:
-	for i: int in range(5):
+func _process(delta: float) -> void:
+	time_accumulator += delta
+	while time_accumulator >= (1.0 / instruction_rate):
 		execute_opcode()
-		program_counter += 2
+		program_counter += 2  # Each Chip-8 instruction is 2 bytes
+		time_accumulator -= (1.0 / instruction_rate)
 	queue_redraw()
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
@@ -122,38 +123,43 @@ func execute_opcode() -> void:
 				
 				0x0004:
 					# 8XY4: Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
+					var result: int = registers[opcode >> 8 & 0x0F] + registers[opcode >> 4 & 0xF]
 					registers[opcode >> 8 & 0x0F] += registers[opcode >> 4 & 0xF]
-					if registers[opcode >> 8 & 0x0F] >= 256: # Check if there's overflow.
+					if result > 255: # Check if there's overflow.
 						registers[0xF] = 1 # Set VF to 1 if there is
 					else:
 						registers[0xF] = 0 # Set VF to 0 if there's no overflow.
 				
 				0x0005:
 					# 8XY5: VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not.
+					var result: int = registers[opcode >> 8 & 0x0F] - registers[opcode >> 4 & 0x0F]
 					registers[opcode >> 8 & 0x0F] -= registers[opcode >> 4 & 0x0F]
-					if registers[opcode >> 8 & 0x0F] < 0: # Check if there's an underflow.
+					if result < 0: # Check if there's an underflow.
 						registers[0x0F] = 0 # There is and VF is set to 0.
 					else:
 						registers[0x0F] = 1 # There isn't and VF is set to 1.
 				
 				0x0006:
 					# 8XY6: vX = vY >> 1, Set VF to the bit that was shifted out.
+					var bit_shifted_out: int = registers[opcode >> 4 & 0x0F] & 0x0001
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F] >> 1
-					registers[0xF] = registers[opcode >> 4 & 0x0F] & 0x1 # Set VF to the bit that was shifted out
+					registers[0xF] = bit_shifted_out # Set VF to the bit that was shifted out
 				
 				0x0007:
 					# 8XY7: Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).
+					var result: int = registers[opcode >> 4 & 0x00F] - registers[opcode >> 8 & 0x0F]
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x00F] - registers[opcode >> 8 & 0x0F]
-					if registers[opcode >> 8 & 0x0F] < 0:
+					if result < 0:
 						registers[0xF] = 0
 					else:
 						registers[0xF] = 1
 				
-				
 				0x000E:
 					# 8XYE: vX = vY << 1, Set VF to the bit that was shifted out.
+					var Y_nibble: int = registers[opcode >> 4 & 0x0F]
+					var bit_shifted_out: int = (Y_nibble >> 3) & 0x1
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F] << 1
-					registers[0xF] = registers[opcode >> 4 & 0x0F] & 0x1 # Set VF to the bit that was shifted out
+					registers[0xF] = bit_shifted_out # Set VF to the bit that was shifted out
 				
 				
 				_:
