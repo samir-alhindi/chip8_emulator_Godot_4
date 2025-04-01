@@ -1,6 +1,11 @@
-[gd_scene load_steps=2 format=3 uid="uid://buqyl305lcvyd"]
+[gd_scene load_steps=3 format=3 uid="uid://buqyl305lcvyd"]
 
 [ext_resource type="Script" path="res://main_scenes/emulator.gd" id="1_urokv"]
+[ext_resource type="AudioStream" uid="uid://bhud48xjheca1" path="res://beep.wav" id="2_i707v"]
 
 [node name="Emulator" type="Node2D"]
 script = ExtResource("1_urokv")
+
+[node name="Beep" type="AudioStreamPlayer" parent="."]
+unique_name_in_owner = true
+stream = ExtResource("2_i707v")

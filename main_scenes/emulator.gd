@@ -15,8 +15,10 @@ var screen: Array[PackedByteArray] = []
 var delay_timer: int = 0
 var sound_timer: int = 0
 
-var instruction_rate: int = 800  # Instructions per second
+var instruction_rate: int = 500  # Instructions per second.
+var timers_decrement_rate: int = 60 # timers decrease by "1" 60 times per second (60 Hz).
 var time_accumulator: float = 0.0
+var time_accumulator_2: float = 0.0
 
 # if halted is false then the game is running.
 # if true then the game has stopped running.
@@ -28,11 +30,18 @@ var halted: bool = false:
 		else:
 			print("game continue...")
 var last_opcode: int
+var last_key_pressed: String
+
+@onready var beep: AudioStreamPlayer = %Beep
 
 var pong_path: StringName = "Pong (1 player).ch8"
 var rom_3_path: StringName = "3-corax+.ch8"
 var rom_4_path: StringName = "4-flags.ch8"
+var rom_5_path: StringName = "5-quirks(1).ch8"
 var rom_6_path: StringName = "6-keypad.ch8"
+var rom_7_path: StringName = "7-beep.ch8"
+var addition_rom: StringName = "Addition Problems [Paul C. Moews].ch8"
+var airplane_rom: StringName = "Airplane.ch8"
 
 func _ready() -> void:
 	# Init RAM, Registers and screen:
@@ -46,9 +55,8 @@ func _ready() -> void:
 		array.fill(0x0000)
 	
 	# Load test upcodes into RAM:
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + rom_6_path) 
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + airplane_rom) 
 	load_rom_into_ram(rom)
-	#RAM[0x1FF] = 2
 
 func _process(delta: float) -> void:
 	time_accumulator += delta
@@ -58,18 +66,30 @@ func _process(delta: float) -> void:
 		time_accumulator -= (1.0 / instruction_rate)
 	queue_redraw()
 	
+	time_accumulator_2 += delta
+	while time_accumulator_2 >= (1.0 / timers_decrement_rate):
+		if delay_timer > 0:
+			delay_timer -= 1
+		if sound_timer > 0:
+			beep.play()
+			sound_timer -= 1
+		time_accumulator_2 -= (1.0 / timers_decrement_rate)
+	
+	
 	if Input.is_anything_pressed() and halted:
 		var keys: = PackedStringArray([
 		"1", "2", "3", "C", "4", "5", "6", "D",
 		"7", "8", "9", "E", "A", "0", "B", "F"])
 		for key: String in keys:
 			if Input.is_action_just_pressed(key):
-				var last_key_pressed: StringName = key
+				last_key_pressed = key
 				var temp: int = last_key_pressed.hex_to_int()
 				registers[last_opcode >> 8 & 0x0F] = temp
 				last_opcode = 0x0000
-				halted = false
 				break
+	
+	if Input.is_action_just_released(last_key_pressed) and halted:
+		halted = false
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -186,7 +206,6 @@ func execute_opcode() -> void:
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F] << 1
 					registers[0xF] = bit_shifted_out # Set VF to the bit that was shifted out
 				
-				
 				_:
 					print("ERROR: 0x%x is unknown opcode." % opcode)
 					return
@@ -238,9 +257,20 @@ func execute_opcode() -> void:
 	
 		0xF000: # 1st nibble is 'F':
 			match opcode & 0x00FF: # Last 2 nibbles still contain more data.
+				
+				0x0007: # FX07: Sets VX to the value of the delay timer.
+					registers[opcode >> 8 & 0x0F] = delay_timer
+				
 				0x000A: # FX0A: Game is halted, A key press is awaited, and then stored in VX.
 					last_opcode = opcode
 					halted = true
+				
+				0x0015: # FX15: Sets the delay timer to VX.
+					delay_timer = registers[opcode >> 8 & 0x0F]
+				
+				0x0018: # FX18: Sets the sound timer to VX.
+					sound_timer = registers[opcode >> 8 & 0x0F]
+				
 				
 				0x0033: # FX33:
 					var number: int = registers[opcode >> 8 & 0x0F]
