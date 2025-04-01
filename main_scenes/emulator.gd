@@ -15,8 +15,19 @@ var screen: Array[PackedByteArray] = []
 var delay_timer: int = 0
 var sound_timer: int = 0
 
-var instruction_rate: int = 500  # Instructions per second
+var instruction_rate: int = 800  # Instructions per second
 var time_accumulator: float = 0.0
+
+# if halted is false then the game is running.
+# if true then the game has stopped running.
+var halted: bool = false:
+	set(value):
+		halted = value
+		if value == true:
+			print("game halted !")
+		else:
+			print("game continue...")
+var last_opcode: int
 
 var pong_path: StringName = "Pong (1 player).ch8"
 var rom_3_path: StringName = "3-corax+.ch8"
@@ -37,14 +48,28 @@ func _ready() -> void:
 	# Load test upcodes into RAM:
 	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + rom_6_path) 
 	load_rom_into_ram(rom)
+	#RAM[0x1FF] = 2
 
 func _process(delta: float) -> void:
 	time_accumulator += delta
-	while time_accumulator >= (1.0 / instruction_rate):
+	while time_accumulator >= (1.0 / instruction_rate) and not halted:
 		execute_opcode()
 		program_counter += 2  # Each Chip-8 instruction is 2 bytes
 		time_accumulator -= (1.0 / instruction_rate)
 	queue_redraw()
+	
+	if Input.is_anything_pressed() and halted:
+		var keys: = PackedStringArray([
+		"1", "2", "3", "C", "4", "5", "6", "D",
+		"7", "8", "9", "E", "A", "0", "B", "F"])
+		for key: String in keys:
+			if Input.is_action_just_pressed(key):
+				var last_key_pressed: StringName = key
+				var temp: int = last_key_pressed.hex_to_int()
+				registers[last_opcode >> 8 & 0x0F] = temp
+				last_opcode = 0x0000
+				halted = false
+				break
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -190,15 +215,40 @@ func execute_opcode() -> void:
 				y_pos += 1
 				x_pos -= 8
 				if y_pos >= 32: y_pos = y_pos % 32 # wrap coordinates when reaching end of screen.
-				_draw()
+				queue_redraw()
+		
+		0xE000: # 1st nibble is 'E':
+			# Still more data in last 2 nibbles:
+			match opcode & 0x00FF:
+				0x009E:
+					# EX9E: Skips the next instruction if the key stored in VX is pressed
+					#(only consider the lowest nibble).
+					var key: int = registers[opcode >> 8 & 0x0F]
+					var temp: String = "%X" % key
+					if Input.is_action_pressed(temp):
+						program_counter += 2
 				
+				0x00A1:
+					# EX9E: Skips the next instruction if the key stored in VX is NOT pressed
+					#(only consider the lowest nibble).
+					var key: int = registers[opcode >> 8 & 0x0F]
+					var temp: String = "%X" % key
+					if not Input.is_action_pressed(temp):
+						program_counter += 2
+	
 		0xF000: # 1st nibble is 'F':
 			match opcode & 0x00FF: # Last 2 nibbles still contain more data.
+				0x000A: # FX0A: Game is halted, A key press is awaited, and then stored in VX.
+					last_opcode = opcode
+					halted = true
+				
 				0x0033: # FX33:
 					var number: int = registers[opcode >> 8 & 0x0F]
 					RAM[index_register + 2] = number % 10
+					@warning_ignore("integer_division")
 					number = floor(number / 10)
 					RAM[index_register + 1] = number % 10
+					@warning_ignore("integer_division")
 					number = floor(number / 10)
 					RAM[index_register] = number
 				
