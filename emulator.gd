@@ -34,14 +34,60 @@ var last_key_pressed: String
 
 @onready var beep: AudioStreamPlayer = %Beep
 
-var pong_path: StringName = "Pong (1 player).ch8"
-var rom_3_path: StringName = "3-corax+.ch8"
-var rom_4_path: StringName = "4-flags.ch8"
-var rom_5_path: StringName = "5-quirks(1).ch8"
-var rom_6_path: StringName = "6-keypad.ch8"
-var rom_7_path: StringName = "7-beep.ch8"
-var addition_rom: StringName = "Addition Problems [Paul C. Moews].ch8"
-var airplane_rom: StringName = "Airplane.ch8"
+var roms: Dictionary = {
+	"pong" : "Pong (1 player).ch8",
+	"rom_3_path" : "3-corax+.ch8",
+	"rom_4_path" : "4-flags.ch8",
+	"rom_5_path" : "5-quirks(1).ch8",
+	"rom_6_path" : "6-keypad.ch8",
+	"rom_7_path" : "7-beep.ch8",
+	"addition" : "Addition Problems [Paul C. Moews].ch8",
+	"airplane_rom" : "Airplane.ch8",
+	"5_years_test" : "chip8-test-rom.ch8",
+	"last_year" : "c8_test.c8",
+	"pong_alt" : "Pong (alt).ch8",
+	"pong_haskell" : "pong.chip8",
+}
+
+
+
+var font: PackedByteArray = [
+0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
+0x20, 0x60, 0x20, 0x20, 0x70, # 1
+0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
+0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
+0x90, 0x90, 0xF0, 0x10, 0x10, # 4
+0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
+0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
+0xF0, 0x10, 0x20, 0x40, 0x40, # 7
+0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
+0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
+0xF0, 0x90, 0xF0, 0x90, 0x90, # A
+0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
+0xF0, 0x80, 0x80, 0x80, 0xF0, # C
+0xE0, 0x90, 0x90, 0x90, 0xE0, # D
+0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
+0xF0, 0x80, 0xF0, 0x80, 0x80  # F
+]
+
+var font_2: PackedByteArray = [
+	0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
+	0x20, 0x60, 0x20, 0x20, 0x70, # 1
+	0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
+	0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
+	0x90, 0x90, 0xF0, 0x10, 0x10, # 4
+	0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
+	0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
+	0xF0, 0x10, 0x20, 0x40, 0x40, # 7
+	0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
+	0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
+	0xF0, 0x90, 0xF0, 0x90, 0x90, # A
+	0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
+	0xF0, 0x80, 0x80, 0x80, 0xF0, # C
+	0xE0, 0x90, 0x90, 0x90, 0xE0, # D
+	0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
+	0xF0, 0x80, 0xF0, 0x80, 0x80  # F
+]
 
 func _ready() -> void:
 	# Init RAM, Registers and screen:
@@ -54,9 +100,15 @@ func _ready() -> void:
 		array.resize(32)
 		array.fill(0x0000)
 	
-	# Load test upcodes into RAM:
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + airplane_rom) 
+	# Load font into RAM:
+	var offset: int = 0x50
+	for i: int in font:
+		RAM[offset] = i
+		offset += 1
+	
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms["addition"]) 
 	load_rom_into_ram(rom)
+	
 
 func _process(delta: float) -> void:
 	time_accumulator += delta
@@ -88,8 +140,9 @@ func _process(delta: float) -> void:
 				last_opcode = 0x0000
 				break
 	
-	if Input.is_action_just_released(last_key_pressed) and halted:
-		halted = false
+	if last_key_pressed != "":
+		if Input.is_action_just_released(last_key_pressed) and halted:
+			halted = false
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -120,10 +173,14 @@ func execute_opcode() -> void:
 			elif opcode == 0x00EE: # 00EE: Returns from a subroutine.
 				program_counter = stack.pop_back()
 				stack_pointer -= 1
+			
+			else:
+				print("ERROR: 0x%x is unknown opcode." % opcode)
+				return
 		
 		0x1000: # 1st nibble is '1':
 			# 1NNN: Jumps to address NNN.
-			program_counter = (opcode & 0x0FFF) - 2 # Subtract 2 so it our PC increment doesn't ruin our address.
+			program_counter = (opcode & 0x0FFF) - 2 # Subtract 2 so our PC increment doesn't ruin our address.
 		
 		0x2000: # 1st nibble is '2':
 			# 2NNN: Calls subroutine at NNN.
@@ -216,7 +273,20 @@ func execute_opcode() -> void:
 				program_counter += 2
 
 		0xA000: # 1st nibble is 'A'
-			index_register = opcode & 0x0FFF
+			index_register = opcode & 0x0FFF # Sets I to the address NNN.
+		
+		0xB000: # 1st nibble is 'B':
+			# BNNN: Jumps to the address NNN plus V0.
+			var result: int = (opcode & 0x0FFF) + registers[0]
+			program_counter = result - 2 # Subtract 2 so our PC increment doesn't ruin our address.
+		
+		
+		0xC000: # 1st nibble is 'C':
+			# CXNN: Sets VX to the result of a bitwise and operation on a random number (Typically: 0 to 255) and NN.
+			var rand_num: int = randi() % 256
+			var NN: int = opcode & 0x00FF
+			var result: int = rand_num & NN
+			registers[opcode >> 8 & 0x0F] = result
 		
 		0xD000: # 1st nibble is 'D':
 			# DXYN: Draws a sprite at coordinate (VX, VY)...
@@ -254,6 +324,10 @@ func execute_opcode() -> void:
 					var temp: String = "%X" % key
 					if not Input.is_action_pressed(temp):
 						program_counter += 2
+				
+				_:
+					print("ERROR: 0x%x is unknown opcode." % opcode)
+					return
 	
 		0xF000: # 1st nibble is 'F':
 			match opcode & 0x00FF: # Last 2 nibbles still contain more data.
