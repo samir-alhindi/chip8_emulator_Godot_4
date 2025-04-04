@@ -22,20 +22,25 @@ var time_accumulator_2: float = 0.0
 
 # if halted is false then the game is running.
 # if true then the game has stopped running.
-var halted: bool = false:
-	set(value):
-		halted = value
-		if value == true:
-			print("game halted !")
-		else:
-			print("game continue...")
+var halted: bool = false
 var last_opcode: int
 var last_key_pressed: String
 
 @onready var beep: AudioStreamPlayer = %Beep
 
+@export_category("Chip-8 Quirks")
+## Where the font data is stored in RAM.
+@export var font_offset: int = 0x50
+## The AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero if true.
+@export var VF_reset: bool = true
+## The save and load opcodes (Fx55 and Fx65) increment the index register.
+@export var memory: bool = true
+## blah blah
+@export var clipping: bool = true
+
 var roms: Dictionary = {
 	"pong" : "Pong (1 player).ch8",
+	"rom_2_path" : "2-ibm-logo(1).ch8",
 	"rom_3_path" : "3-corax+.ch8",
 	"rom_4_path" : "4-flags.ch8",
 	"rom_5_path" : "5-quirks(1).ch8",
@@ -47,8 +52,12 @@ var roms: Dictionary = {
 	"last_year" : "c8_test.c8",
 	"pong_alt" : "Pong (alt).ch8",
 	"pong_haskell" : "pong.chip8",
+	"1dcell" : "1dcell.ch8",
+	"title" : "octojam1title.ch8",
+	"RPS" : "RPS.ch8",
+	"pong.rom" : "pong.rom",
+	"space_inad" : "Space Invaders [David Winter].ch8",
 }
-
 
 
 var font: PackedByteArray = [
@@ -70,25 +79,6 @@ var font: PackedByteArray = [
 0xF0, 0x80, 0xF0, 0x80, 0x80  # F
 ]
 
-var font_2: PackedByteArray = [
-	0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
-	0x20, 0x60, 0x20, 0x20, 0x70, # 1
-	0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
-	0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
-	0x90, 0x90, 0xF0, 0x10, 0x10, # 4
-	0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
-	0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
-	0xF0, 0x10, 0x20, 0x40, 0x40, # 7
-	0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
-	0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
-	0xF0, 0x90, 0xF0, 0x90, 0x90, # A
-	0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
-	0xF0, 0x80, 0x80, 0x80, 0xF0, # C
-	0xE0, 0x90, 0x90, 0x90, 0xE0, # D
-	0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
-	0xF0, 0x80, 0xF0, 0x80, 0x80  # F
-]
-
 func _ready() -> void:
 	# Init RAM, Registers and screen:
 	RAM.resize(4 * 1024)
@@ -101,12 +91,11 @@ func _ready() -> void:
 		array.fill(0x0000)
 	
 	# Load font into RAM:
-	var offset: int = 0x50
 	for i: int in font:
-		RAM[offset] = i
-		offset += 1
+		RAM[font_offset] = i
+		font_offset += 1
 	
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms["addition"]) 
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms["pong"]) 
 	load_rom_into_ram(rom)
 	
 
@@ -116,17 +105,17 @@ func _process(delta: float) -> void:
 		execute_opcode()
 		program_counter += 2  # Each Chip-8 instruction is 2 bytes
 		time_accumulator -= (1.0 / instruction_rate)
-	queue_redraw()
+	#queue_redraw()
 	
 	time_accumulator_2 += delta
 	while time_accumulator_2 >= (1.0 / timers_decrement_rate):
+		queue_redraw()
 		if delay_timer > 0:
 			delay_timer -= 1
 		if sound_timer > 0:
 			beep.play()
 			sound_timer -= 1
 		time_accumulator_2 -= (1.0 / timers_decrement_rate)
-	
 	
 	if Input.is_anything_pressed() and halted:
 		var keys: = PackedStringArray([
@@ -216,12 +205,21 @@ func execute_opcode() -> void:
 				
 				0x0001: # 8XY1: Sets VX to VX or VY. (bitwise OR operation).
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] | registers[opcode >> 4 & 0x00F]
+					# Quirk:
+					if VF_reset:
+						registers[0xF] = 0
 				
 				0x0002: # 8XY2: Sets VX to VX and VY. (bitwise AND operation).
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] & registers[opcode >> 4 & 0x00F]
+					# Quirk:
+					if VF_reset:
+						registers[0xF] = 0
 				
 				0x0003: # 8XY3: Sets VX to VX XOR VY.
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] ^ registers[opcode >> 4 & 0x00F]
+					# Quirk:
+					if VF_reset:
+						registers[0xF] = 0
 				
 				0x0004:
 					# 8XY4: Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
@@ -304,7 +302,7 @@ func execute_opcode() -> void:
 				y_pos += 1
 				x_pos -= 8
 				if y_pos >= 32: y_pos = y_pos % 32 # wrap coordinates when reaching end of screen.
-				queue_redraw()
+				#queue_redraw()
 		
 		0xE000: # 1st nibble is 'E':
 			# Still more data in last 2 nibbles:
@@ -359,12 +357,23 @@ func execute_opcode() -> void:
 				0x0065: # FX65:
 					var num_of_registers_to_fill: int = opcode >> 8 & 0x0F
 					for i: int in range(num_of_registers_to_fill + 1):
-						registers[i] = RAM[index_register + i]
+						# Quirk:
+						if not memory:
+							registers[i] = RAM[index_register + i]
+						elif memory:
+							registers[i] = RAM[index_register]
+							index_register += 1
 				
 				0x0055: # FX55:
 					var num_of_times_to_iterate: int = opcode >> 8 & 0x0F
 					for i: int in range(num_of_times_to_iterate + 1):
-						RAM[index_register + i] = registers[i]
+						# Quirk:
+						if not memory:
+							RAM[index_register + i] = registers[i]
+						elif memory:
+							RAM[index_register] = registers[i]
+							index_register += 1
+						
 			
 				0x001E: # FX1E: Adds VX to I. VF is not affected.
 					index_register += registers[opcode >> 8 & 0x0F]

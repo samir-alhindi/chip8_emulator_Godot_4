@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://cygcpmr1ct6el"]
+
+[node name="Main" type="Node"]
+
+[node name="CanvasLayer" type="CanvasLayer" parent="."]
+
+[node name="MenuBar" type="MenuBar" parent="CanvasLayer"]
+clip_contents = true
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 0.115
+offset_bottom = -0.200005
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="File" type="PopupMenu" parent="CanvasLayer/MenuBar"]
+item_count = 1
+item_0/text = "Load ROM"
+item_0/checkable = 1
+item_0/checked = true
