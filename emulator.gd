@@ -15,7 +15,6 @@ var screen: Array[PackedByteArray] = []
 var delay_timer: int = 0
 var sound_timer: int = 0
 
-var instruction_rate: int = 500  # Instructions per second.
 var timers_decrement_rate: int = 60 # timers decrease by "1" 60 times per second (60 Hz).
 var time_accumulator: float = 0.0
 var time_accumulator_2: float = 0.0
@@ -28,37 +27,35 @@ var last_opcode: int
 var last_key_pressed: String
 
 @onready var beep: AudioStreamPlayer = %Beep
+
+@export_category("Configure")
+## ROM to load.
+@export_enum("pong", "space invaders", "RPS", "airplane", "quirks test") var game_name: String = "pong"
+## Instructions per second.
+@export var instruction_rate: int = 500
+
+@export_category("Chip-8 Quirks")
 ## Set VY value to VX before bit shift (8XY6, 8XYE).
 @export var change_VX_before_bit_shift: bool = false
 ## The AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero.
 @export var reset_VF: bool = true
 ## The save and load opcodes (Fx55 and Fx65) increment the index register.
-@export var save_and_load_increment_I: bool = true
+@export var save_and_load_increment_I: bool = false
 ## Sprites don't wrap around the screen.
 @export var sprite_clipping: bool = true
+## use VX with BNNN instead of V0
+@export var use_V0_in_BNNN: bool = true
 ## Where the font data (1, 2, 3,...E, F) is stored in RAM.
 @export var font_offset: int = 0x50
-@export_category("Chip-8 Quirks")
+
 
 var roms: Dictionary = {
 	"pong" : "Pong (1 player).ch8",
-	"rom_2_path" : "2-ibm-logo(1).ch8",
-	"rom_3_path" : "3-corax+.ch8",
-	"rom_4_path" : "4-flags.ch8",
-	"rom_5_path" : "5-quirks(1).ch8",
-	"rom_6_path" : "6-keypad.ch8",
-	"rom_7_path" : "7-beep.ch8",
+	"quirks test" : "5-quirks(1).ch8",
 	"addition" : "Addition Problems [Paul C. Moews].ch8",
-	"airplane_rom" : "Airplane.ch8",
-	"5_years_test" : "chip8-test-rom.ch8",
-	"last_year" : "c8_test.c8",
-	"pong_alt" : "Pong (alt).ch8",
-	"pong_haskell" : "pong.chip8",
-	"1dcell" : "1dcell.ch8",
-	"title" : "octojam1title.ch8",
+	"airplane" : "Airplane.ch8",
 	"RPS" : "RPS.ch8",
-	"pong.rom" : "pong.rom",
-	"space_inad" : "Space Invaders [David Winter].ch8",
+	"space invaders" : "Space Invaders [David Winter].ch8",
 }
 
 
@@ -98,7 +95,7 @@ func _ready() -> void:
 		RAM[offset] = i
 		offset += 1
 	
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms["rom_5_path"]) 
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms[game_name]) 
 	load_rom_into_ram(rom)
 
 
@@ -155,10 +152,10 @@ func load_rom_into_ram(ROM: PackedByteArray) -> void:
 func execute_opcode() -> void:
 	# Fetch Opcode:
 	var opcode: int = (RAM[program_counter] << 8) | RAM[program_counter + 1]
-
+	
 	# Decode Opcode:
 	match opcode & 0xF000: # Decode the Opcode type from the 1st nibble.
-
+	
 		0x0000: #1st nibble is '0':
 			if opcode == 0x00E0: # 00E0: Clears the screen.
 				for array: PackedByteArray in screen:
@@ -285,8 +282,13 @@ func execute_opcode() -> void:
 		
 		0xB000: # 1st nibble is 'B':
 			# BNNN: Jumps to the address NNN plus V0.
-			var result: int = (opcode & 0x0FFF) + registers[0]
-			program_counter = result - 2 # Subtract 2 so our PC increment doesn't ruin our address.
+			# Quirk
+			var address: int
+			if use_V0_in_BNNN == true:
+				address = (opcode & 0x0FFF) + registers[0]
+			elif use_V0_in_BNNN == false:
+				address = (opcode & 0x0FFF) + registers[opcode >> 8 & 0x0F]
+			program_counter = address - 2 # Subtract 2 so our PC increment doesn't ruin our address.
 		
 		
 		0xC000: # 1st nibble is 'C':
@@ -372,11 +374,11 @@ func execute_opcode() -> void:
 				0x0029: # FX29: Sets I to the location of the sprite for the character in VX(only consider the lowest nibble).
 					# Extract the last nibble:
 					var vx_value: int = registers[opcode >> 8 & 0x0F]
-					var char: int = vx_value & 0x0F
+					var chr: int = vx_value & 0x0F
 					# Point I to the right char in save_and_load_increment_I:
 					var font_data_start_address: int = font_offset
 					# Each char is 5 bytes:
-					var address: int = font_data_start_address + (char * 5)
+					var address: int = font_data_start_address + (chr * 5)
 					index_register = address
 				
 				0x0033: # FX33:

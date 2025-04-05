@@ -5,6 +5,8 @@
 
 [node name="Emulator" type="Node2D"]
 script = ExtResource("1_urokv")
+game_name = "space invaders"
+instruction_rate = 1000
 
 [node name="Beep" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
