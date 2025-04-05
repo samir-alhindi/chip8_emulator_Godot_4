@@ -30,6 +30,8 @@ var last_key_pressed: String
 @onready var beep: AudioStreamPlayer = %Beep
 
 @export_category("Chip-8 Quirks")
+## Put VY into VX before shift (8XY6, 8XYE)
+@export var shift: bool = true
 ## Where the font data is stored in RAM.
 @export var font_offset: int = 0x50
 ## The AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero if true.
@@ -92,11 +94,12 @@ func _ready() -> void:
 		array.fill(0x0000)
 	
 	# Load font into RAM:
+	var offset: int = font_offset
 	for i: int in font:
-		RAM[font_offset] = i
-		font_offset += 1
+		RAM[offset] = i
+		offset += 1
 	
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms["pong"]) 
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms["space_inad"]) 
 	load_rom_into_ram(rom)
 	
 
@@ -362,6 +365,15 @@ func execute_opcode() -> void:
 				0x0018: # FX18: Sets the sound timer to VX.
 					sound_timer = registers[opcode >> 8 & 0x0F]
 				
+				0x0029: # FX29: Sets I to the location of the sprite for the character in VX(only consider the lowest nibble).
+					# Extract the last nibble:
+					var vx_value: int = registers[opcode >> 8 & 0x0F]
+					var char: int = vx_value & 0x0F
+					# Point I to the right char in memory:
+					var font_data_start_address: int = font_offset
+					# Each char is 5 bytes:
+					var address: int = font_data_start_address + (char * 5)
+					index_register = address
 				
 				0x0033: # FX33:
 					var number: int = registers[opcode >> 8 & 0x0F]
@@ -396,6 +408,10 @@ func execute_opcode() -> void:
 			
 				0x001E: # FX1E: Adds VX to I. VF is not affected.
 					index_register += registers[opcode >> 8 & 0x0F]
+					
+				_:
+					print("ERROR: 0x%x is unknown opcode." % opcode)
+					return
 			
 		_:
 			print("ERROR: 0x%x is unknown opcode." % opcode)

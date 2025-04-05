@@ -5,6 +5,7 @@
 
 [node name="Emulator" type="Node2D"]
 script = ExtResource("1_urokv")
+VF_reset = false
 
 [node name="Beep" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
