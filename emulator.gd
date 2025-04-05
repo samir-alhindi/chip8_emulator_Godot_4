@@ -19,6 +19,7 @@ var instruction_rate: int = 500  # Instructions per second.
 var timers_decrement_rate: int = 60 # timers decrease by "1" 60 times per second (60 Hz).
 var time_accumulator: float = 0.0
 var time_accumulator_2: float = 0.0
+var draw_accumulator: float = 0.0
 
 # if halted is false then the game is running.
 # if true then the game has stopped running.
@@ -105,7 +106,6 @@ func _process(delta: float) -> void:
 		execute_opcode()
 		program_counter += 2  # Each Chip-8 instruction is 2 bytes
 		time_accumulator -= (1.0 / instruction_rate)
-	#queue_redraw()
 	
 	time_accumulator_2 += delta
 	while time_accumulator_2 >= (1.0 / timers_decrement_rate):
@@ -116,6 +116,7 @@ func _process(delta: float) -> void:
 			beep.play()
 			sound_timer -= 1
 		time_accumulator_2 -= (1.0 / timers_decrement_rate)
+	
 	
 	if Input.is_anything_pressed() and halted:
 		var keys: = PackedStringArray([
@@ -132,6 +133,8 @@ func _process(delta: float) -> void:
 	if last_key_pressed != "":
 		if Input.is_action_just_released(last_key_pressed) and halted:
 			halted = false
+	
+
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -288,22 +291,38 @@ func execute_opcode() -> void:
 		
 		0xD000: # 1st nibble is 'D':
 			# DXYN: Draws a sprite at coordinate (VX, VY)...
+			
 			registers[0xF] = 0 # VF register must be cleared first.
 			var x_pos: int = registers[opcode >> 8 & 0xF] % 64
 			var y_pos: int = registers[opcode >> 4 & 0xF] % 32
-			for N: int in range(opcode & 0x000F):
-				var Nth_byte: int = RAM[index_register + N]
-				for i: int in range(8):
-					if x_pos >= 64: x_pos = x_pos % 64 # wrap coordinates when reaching end of screen.
-					screen[x_pos][y_pos] = screen[x_pos][y_pos] ^ (Nth_byte << i & 0b10000000)
-					if screen[x_pos][y_pos] ^ (Nth_byte << i & 0b10000000) != 0: # Check if pixel collision.
+			var sprite_height: int = opcode & 0x000F
+			for i: int in range(sprite_height):
+				var byte: int = RAM[index_register + i]
+				for j: int in range(8):
+					 # drawing when reaching end of screen.
+					if x_pos >= 64 or x_pos < 0:
+						if clipping == true:
+							# Stop drawing row when reaching end of screen:
+							# Fix x_pos's value:
+							x_pos = registers[opcode >> 8 & 0xF] % 64
+							# Increment x_pos so it doesn't get ruined later:
+							x_pos += 8
+							break
+						elif clipping == false:
+							x_pos = x_pos % 64
+					screen[x_pos][y_pos] = screen[x_pos][y_pos] ^ (byte << j & 0b10000000)
+					if screen[x_pos][y_pos] ^ (byte << j & 0b10000000) != 0: # Check if pixel collision.
 						registers[0xF] = 1 # add 1 to the flag register VF.
 					x_pos += 1
 				y_pos += 1
 				x_pos -= 8
-				if y_pos >= 32: y_pos = y_pos % 32 # wrap coordinates when reaching end of screen.
-				#queue_redraw()
-		
+				# drawing when reaching end of screen.
+				if y_pos >= 32 or y_pos < 0:
+					if clipping == true:
+						break
+					elif clipping == false:
+						y_pos = y_pos % 32
+	
 		0xE000: # 1st nibble is 'E':
 			# Still more data in last 2 nibbles:
 			match opcode & 0x00FF:
