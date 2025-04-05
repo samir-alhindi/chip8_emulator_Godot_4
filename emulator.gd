@@ -28,18 +28,17 @@ var last_opcode: int
 var last_key_pressed: String
 
 @onready var beep: AudioStreamPlayer = %Beep
-
-@export_category("Chip-8 Quirks")
-## Put VY into VX before shift (8XY6, 8XYE)
-@export var shift: bool = true
-## Where the font data is stored in RAM.
-@export var font_offset: int = 0x50
-## The AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero if true.
-@export var VF_reset: bool = true
+## Set VY value to VX before bit shift (8XY6, 8XYE).
+@export var change_VX_before_bit_shift: bool = false
+## The AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero.
+@export var reset_VF: bool = true
 ## The save and load opcodes (Fx55 and Fx65) increment the index register.
-@export var memory: bool = true
-## blah blah
-@export var clipping: bool = true
+@export var save_and_load_increment_I: bool = true
+## Sprites don't wrap around the screen.
+@export var sprite_clipping: bool = true
+## Where the font data (1, 2, 3,...E, F) is stored in RAM.
+@export var font_offset: int = 0x50
+@export_category("Chip-8 Quirks")
 
 var roms: Dictionary = {
 	"pong" : "Pong (1 player).ch8",
@@ -99,9 +98,9 @@ func _ready() -> void:
 		RAM[offset] = i
 		offset += 1
 	
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms["space_inad"]) 
+	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms["rom_5_path"]) 
 	load_rom_into_ram(rom)
-	
+
 
 func _process(delta: float) -> void:
 	time_accumulator += delta
@@ -212,19 +211,19 @@ func execute_opcode() -> void:
 				0x0001: # 8XY1: Sets VX to VX or VY. (bitwise OR operation).
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] | registers[opcode >> 4 & 0x00F]
 					# Quirk:
-					if VF_reset:
+					if reset_VF:
 						registers[0xF] = 0
 				
 				0x0002: # 8XY2: Sets VX to VX and VY. (bitwise AND operation).
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] & registers[opcode >> 4 & 0x00F]
 					# Quirk:
-					if VF_reset:
+					if reset_VF:
 						registers[0xF] = 0
 				
 				0x0003: # 8XY3: Sets VX to VX XOR VY.
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] ^ registers[opcode >> 4 & 0x00F]
 					# Quirk:
-					if VF_reset:
+					if reset_VF:
 						registers[0xF] = 0
 				
 				0x0004:
@@ -246,9 +245,13 @@ func execute_opcode() -> void:
 						registers[0x0F] = 1 # There isn't and VF is set to 1.
 				
 				0x0006:
-					# 8XY6: vX = vY >> 1, Set VF to the bit that was shifted out.
-					var bit_shifted_out: int = registers[opcode >> 4 & 0x0F] & 0x0001
-					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F] >> 1
+					# 8XY6: Shift VX value 1 bit to the right:
+					# Quirk:
+					if change_VX_before_bit_shift == true:
+						# Set VX to VY before shifting
+						registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F]
+					var bit_shifted_out: int = registers[opcode >> 8 & 0x0F] & 0x0001
+					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] >> 1
 					registers[0xF] = bit_shifted_out # Set VF to the bit that was shifted out
 				
 				0x0007:
@@ -261,10 +264,11 @@ func execute_opcode() -> void:
 						registers[0xF] = 1
 				
 				0x000E:
-					# 8XYE: vX = vY << 1, Set VF to the bit that was shifted out.
-					var Y_nibble: int = registers[opcode >> 4 & 0x0F]
-					var bit_shifted_out: int = (Y_nibble >> 3) & 0x1
-					registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F] << 1
+					if change_VX_before_bit_shift == true:
+						# Set VX to VY before shifting
+						registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F]
+					var bit_shifted_out: int = registers[opcode >> 8 & 0x0F] & 0x10000000
+					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] << 1
 					registers[0xF] = bit_shifted_out # Set VF to the bit that was shifted out
 				
 				_:
@@ -304,14 +308,14 @@ func execute_opcode() -> void:
 				for j: int in range(8):
 					 # drawing when reaching end of screen.
 					if x_pos >= 64 or x_pos < 0:
-						if clipping == true:
+						if sprite_clipping == true:
 							# Stop drawing row when reaching end of screen:
 							# Fix x_pos's value:
 							x_pos = registers[opcode >> 8 & 0xF] % 64
 							# Increment x_pos so it doesn't get ruined later:
 							x_pos += 8
 							break
-						elif clipping == false:
+						elif sprite_clipping == false:
 							x_pos = x_pos % 64
 					screen[x_pos][y_pos] = screen[x_pos][y_pos] ^ (byte << j & 0b10000000)
 					if screen[x_pos][y_pos] ^ (byte << j & 0b10000000) != 0: # Check if pixel collision.
@@ -321,9 +325,9 @@ func execute_opcode() -> void:
 				x_pos -= 8
 				# drawing when reaching end of screen.
 				if y_pos >= 32 or y_pos < 0:
-					if clipping == true:
+					if sprite_clipping == true:
 						break
-					elif clipping == false:
+					elif sprite_clipping == false:
 						y_pos = y_pos % 32
 	
 		0xE000: # 1st nibble is 'E':
@@ -369,7 +373,7 @@ func execute_opcode() -> void:
 					# Extract the last nibble:
 					var vx_value: int = registers[opcode >> 8 & 0x0F]
 					var char: int = vx_value & 0x0F
-					# Point I to the right char in memory:
+					# Point I to the right char in save_and_load_increment_I:
 					var font_data_start_address: int = font_offset
 					# Each char is 5 bytes:
 					var address: int = font_data_start_address + (char * 5)
@@ -389,9 +393,9 @@ func execute_opcode() -> void:
 					var num_of_registers_to_fill: int = opcode >> 8 & 0x0F
 					for i: int in range(num_of_registers_to_fill + 1):
 						# Quirk:
-						if not memory:
+						if not save_and_load_increment_I:
 							registers[i] = RAM[index_register + i]
-						elif memory:
+						elif save_and_load_increment_I:
 							registers[i] = RAM[index_register]
 							index_register += 1
 				
@@ -399,9 +403,9 @@ func execute_opcode() -> void:
 					var num_of_times_to_iterate: int = opcode >> 8 & 0x0F
 					for i: int in range(num_of_times_to_iterate + 1):
 						# Quirk:
-						if not memory:
+						if not save_and_load_increment_I:
 							RAM[index_register + i] = registers[i]
-						elif memory:
+						elif save_and_load_increment_I:
 							RAM[index_register] = registers[i]
 							index_register += 1
 						
