@@ -1,4 +1,4 @@
-extends Node2D
+class_name Emulator extends Node2D
 
 var RAM: PackedByteArray = []
 var program_counter: int = 0x200
@@ -28,11 +28,15 @@ var last_key_pressed: String
 
 @onready var beep: AudioStreamPlayer = %Beep
 
-@export_category("Configure")
+
 ## ROM to load.
-@export_enum("pong", "space invaders", "RPS", "airplane", "quirks test") var game_name: String = "pong"
+static var game_name: String
+## color of the black screen.
+static var background_color: Color = Color.BLACK
+## color of the drawn sprites.
+static var sprite_color: Color = Color.WHITE
 ## Instructions per second.
-@export var instruction_rate: int = 500
+static var instruction_rate: int = 500
 
 @export_category("Chip-8 Quirks")
 ## Set VY value to VX before bit shift (8XY6, 8XYE).
@@ -47,17 +51,6 @@ var last_key_pressed: String
 @export var use_V0_in_BNNN: bool = true
 ## Where the font data (1, 2, 3,...E, F) is stored in RAM.
 @export var font_offset: int = 0x50
-
-
-var roms: Dictionary = {
-	"pong" : "Pong (1 player).ch8",
-	"quirks test" : "5-quirks(1).ch8",
-	"addition" : "Addition Problems [Paul C. Moews].ch8",
-	"airplane" : "Airplane.ch8",
-	"RPS" : "RPS.ch8",
-	"space invaders" : "Space Invaders [David Winter].ch8",
-}
-
 
 var font: PackedByteArray = [
 0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
@@ -85,6 +78,7 @@ func _ready() -> void:
 	registers.resize(16)
 	registers.fill(0x0000)
 	screen.resize(64)
+	RenderingServer.set_default_clear_color(background_color)
 	for array: PackedByteArray in screen:
 		array.resize(32)
 		array.fill(0x0000)
@@ -95,9 +89,8 @@ func _ready() -> void:
 		RAM[offset] = i
 		offset += 1
 	
-	var rom: PackedByteArray = open_read_and_get_ROM("C:\\Users\\Samir\\Documents\\chip8\\ROMs\\" + roms[game_name]) 
+	var rom: PackedByteArray = open_read_and_get_ROM("res://ROMs/" + game_name) 
 	load_rom_into_ram(rom)
-
 
 func _process(delta: float) -> void:
 	time_accumulator += delta
@@ -132,8 +125,10 @@ func _process(delta: float) -> void:
 	if last_key_pressed != "":
 		if Input.is_action_just_released(last_key_pressed) and halted:
 			halted = false
-	
 
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("quit"):
+		get_tree().change_scene_to_file("uid://cygcpmr1ct6el")
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -431,4 +426,4 @@ func _draw() -> void:
 		for y: int in range(screen[x].size()):
 			if screen[x][y] != 0:
 				var pixel: Rect2 = Rect2(Vector2(x, y), Vector2(1, 1))
-				draw_rect(pixel, Color.WHITE, true)
+				draw_rect(pixel, sprite_color, true)
