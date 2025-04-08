@@ -40,11 +40,11 @@ static var instruction_rate: int = 500
 
 @export_category("Chip-8 Quirks")
 ## Set VY value to VX before bit shift (8XY6, 8XYE).
-@export var change_VX_before_bit_shift: bool = false
+@export var set_VX_to_VY_before_shift: bool = false
 ## The AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero.
-@export var reset_VF: bool = true
+@export var _8xy1_8xy2_8xy3_reset_VF: bool = true
 ## The save and load opcodes (Fx55 and Fx65) increment the index register.
-@export var save_and_load_increment_I: bool = false
+@export var FX55_and_FX65_increment_I: bool = false
 ## Sprites don't wrap around the screen.
 @export var sprite_clipping: bool = true
 ## use VX with BNNN instead of V0
@@ -203,19 +203,19 @@ func execute_opcode() -> void:
 				0x0001: # 8XY1: Sets VX to VX or VY. (bitwise OR operation).
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] | registers[opcode >> 4 & 0x00F]
 					# Quirk:
-					if reset_VF:
+					if _8xy1_8xy2_8xy3_reset_VF:
 						registers[0xF] = 0
 				
 				0x0002: # 8XY2: Sets VX to VX and VY. (bitwise AND operation).
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] & registers[opcode >> 4 & 0x00F]
 					# Quirk:
-					if reset_VF:
+					if _8xy1_8xy2_8xy3_reset_VF:
 						registers[0xF] = 0
 				
 				0x0003: # 8XY3: Sets VX to VX XOR VY.
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] ^ registers[opcode >> 4 & 0x00F]
 					# Quirk:
-					if reset_VF:
+					if _8xy1_8xy2_8xy3_reset_VF:
 						registers[0xF] = 0
 				
 				0x0004:
@@ -239,10 +239,10 @@ func execute_opcode() -> void:
 				0x0006:
 					# 8XY6: Shift VX value 1 bit to the right:
 					# Quirk:
-					if change_VX_before_bit_shift == true:
+					if set_VX_to_VY_before_shift == true:
 						# Set VX to VY before shifting
 						registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F]
-					var bit_shifted_out: int = registers[opcode >> 8 & 0x0F] & 0x0001
+					var bit_shifted_out: int = registers[opcode >> 8 & 0x0F] & 0b0001
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] >> 1
 					registers[0xF] = bit_shifted_out # Set VF to the bit that was shifted out
 				
@@ -256,10 +256,12 @@ func execute_opcode() -> void:
 						registers[0xF] = 1
 				
 				0x000E:
-					if change_VX_before_bit_shift == true:
+					# 8XYE: Shifts VX to the left by 1:
+					if set_VX_to_VY_before_shift == true:
 						# Set VX to VY before shifting
 						registers[opcode >> 8 & 0x0F] = registers[opcode >> 4 & 0x0F]
-					var bit_shifted_out: int = registers[opcode >> 8 & 0x0F] & 0x10000000
+					var vx_value: int = registers[opcode >> 8 & 0x0F]
+					var bit_shifted_out: int = (vx_value >> 7) & 0b1
 					registers[opcode >> 8 & 0x0F] = registers[opcode >> 8 & 0x0F] << 1
 					registers[0xF] = bit_shifted_out # Set VF to the bit that was shifted out
 				
@@ -390,9 +392,9 @@ func execute_opcode() -> void:
 					var num_of_registers_to_fill: int = opcode >> 8 & 0x0F
 					for i: int in range(num_of_registers_to_fill + 1):
 						# Quirk:
-						if not save_and_load_increment_I:
+						if not FX55_and_FX65_increment_I:
 							registers[i] = RAM[index_register + i]
-						elif save_and_load_increment_I:
+						elif FX55_and_FX65_increment_I:
 							registers[i] = RAM[index_register]
 							index_register += 1
 				
@@ -400,9 +402,9 @@ func execute_opcode() -> void:
 					var num_of_times_to_iterate: int = opcode >> 8 & 0x0F
 					for i: int in range(num_of_times_to_iterate + 1):
 						# Quirk:
-						if not save_and_load_increment_I:
+						if not FX55_and_FX65_increment_I:
 							RAM[index_register + i] = registers[i]
-						elif save_and_load_increment_I:
+						elif FX55_and_FX65_increment_I:
 							RAM[index_register] = registers[i]
 							index_register += 1
 						
