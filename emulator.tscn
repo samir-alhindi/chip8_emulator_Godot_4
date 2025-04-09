@@ -6,12 +6,9 @@
 [node name="Emulator" type="Node2D"]
 script = ExtResource("1_urokv")
 _8xy1_8xy2_8xy3_reset_VF = false
+sprite_clipping = false
 use_V0_in_BNNN = false
 
 [node name="Beep" type="AudioStreamPlayer" parent="."]
 unique_name_in_owner = true
 stream = ExtResource("2_i707v")
-
-[node name="Camera2D" type="Camera2D" parent="."]
-offset = Vector2(32, 16)
-zoom = Vector2(20, 20)

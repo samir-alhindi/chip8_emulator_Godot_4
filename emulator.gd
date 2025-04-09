@@ -429,3 +429,10 @@ func _draw() -> void:
 			if screen[x][y] != 0:
 				var pixel: Rect2 = Rect2(Vector2(x, y), Vector2(1, 1))
 				draw_rect(pixel, sprite_color, true)
+
+
+func _on_set_v_xto_v_yshift_pressed() -> void:
+	set_VX_to_VY_before_shift = not set_VX_to_VY_before_shift
+
+func _on_reset_vf_pressed() -> void:
+	_8xy1_8xy2_8xy3_reset_VF = not _8xy1_8xy2_8xy3_reset_VF

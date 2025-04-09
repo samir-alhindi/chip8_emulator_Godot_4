@@ -10,4 +10,4 @@ func _gui_input(event) -> void:
 	if event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			Emulator.game_name = text
-			get_tree().change_scene_to_file("uid://buqyl305lcvyd")
+			get_tree().change_scene_to_file("uid://d531712tl7rh")
