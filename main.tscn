@@ -30,13 +30,15 @@ render_target_update_mode = 4
 texture_filter = 1
 
 [node name="QuirksContainer" type="VBoxContainer" parent="CanvasLayer"]
-anchors_preset = 11
-anchor_left = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = -505.0
-offset_right = -2.0
-offset_bottom = -254.0
+anchors_preset = -1
+anchor_left = 0.019
+anchor_top = 0.628
+anchor_right = 0.019
+anchor_bottom = 1.011
+offset_left = -0.320002
+offset_top = 0.0799866
+offset_right = 592.68
+offset_bottom = -0.0400391
 grow_horizontal = 0
 grow_vertical = 2
 theme = SubResource("Theme_e7l4w")
@@ -76,9 +78,9 @@ layout_mode = 2
 
 [node name="Label" type="Label" parent="CanvasLayer/QuirksContainer/HBoxContainer4"]
 layout_mode = 2
-text = "sprite clipping"
+text = "sprites wrap around the screen instead of clipping"
 
-[node name="SpriteClipping" type="CheckButton" parent="CanvasLayer/QuirksContainer/HBoxContainer4"]
+[node name="SpriteWrapping" type="CheckButton" parent="CanvasLayer/QuirksContainer/HBoxContainer4"]
 layout_mode = 2
 
 [node name="HBoxContainer5" type="HBoxContainer" parent="CanvasLayer/QuirksContainer"]
@@ -101,5 +103,5 @@ offset_bottom = 386.0
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer/SetVXtoVYshift" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_set_v_xto_v_yshift_pressed"]
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer2/ResetVF" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_reset_vf_pressed"]
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer3/IncrementI" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_increment_i_pressed"]
-[connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer4/SpriteClipping" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_sprite_clipping_pressed"]
+[connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer4/SpriteWrapping" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_sprite_wrapping_pressed"]
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer5/BNNN" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_bnnn_pressed"]

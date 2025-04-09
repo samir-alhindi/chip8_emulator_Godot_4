@@ -8,7 +8,6 @@ var registers: PackedByteArray = []
 var index_register: int = 0
 
 var stack: Array = []
-var stack_pointer: int = 0
 
 var screen: Array[PackedByteArray] = []
 
@@ -44,8 +43,8 @@ var set_VX_to_VY_before_shift: bool = false
 var _8xy1_8xy2_8xy3_reset_VF: bool = false
 ## The save and load opcodes (Fx55 and Fx65) increment the index register.
 var FX55_and_FX65_increment_I: bool = false
-## Sprites don't wrap around the screen.
-var sprite_clipping: bool = false
+## Sprites wrap around the screen instead of being clipped.
+var sprite_wrap: bool = false
 ## use VX with BNNN instead of V0
 var use_V0_in_BNNN: bool = false
 ## Where the font data (1, 2, 3,...E, F) is stored in RAM.
@@ -160,7 +159,6 @@ func execute_opcode() -> void:
 			
 			elif opcode == 0x00EE: # 00EE: Returns from a subroutine.
 				program_counter = stack.pop_back()
-				stack_pointer -= 1
 			
 			else:
 				print("ERROR: 0x%x is unknown opcode." % opcode)
@@ -173,7 +171,6 @@ func execute_opcode() -> void:
 		0x2000: # 1st nibble is '2':
 			# 2NNN: Calls subroutine at NNN.
 			stack.append(program_counter) # Push current PC to stack so we can return later.
-			stack_pointer += 1
 			program_counter = (opcode & 0x0FFF) - 2 # Subtract 2 so it our PC increment doesn't ruin our address.
 		
 		0x3000: # 1st nibble is '3':
@@ -298,38 +295,40 @@ func execute_opcode() -> void:
 			registers[opcode >> 8 & 0x0F] = result
 		
 		0xD000: # 1st nibble is 'D':
-			# DXYN: Draws a sprite at coordinate (VX, VY)...
-			
-			registers[0xF] = 0 # VF register must be cleared first.
-			var x_pos: int = registers[opcode >> 8 & 0xF] % 64
+			# DXYN: Draws a sprite at coordinate (VX, VY):
+			var X_POS: int = registers[opcode >> 8 & 0xF] % 64
+			var x_pos: int = X_POS
 			var y_pos: int = registers[opcode >> 4 & 0xF] % 32
+			registers[0xF] = 0 # VF register must be cleared.
 			var sprite_height: int = opcode & 0x000F
 			for i: int in range(sprite_height):
 				var byte: int = RAM[index_register + i]
+				# For each of the 8 bits in this byte:
 				for j: int in range(8):
-					 # drawing when reaching end of screen.
-					if x_pos >= 64 or x_pos < 0:
-						if sprite_clipping == true:
-							# Stop drawing row when reaching end of screen:
-							# Fix x_pos's value:
-							x_pos = registers[opcode >> 8 & 0xF] % 64
-							# Increment x_pos so it doesn't get ruined later:
-							x_pos += 8
-							break
-						elif sprite_clipping == false:
-							x_pos = x_pos % 64
-					screen[x_pos][y_pos] = screen[x_pos][y_pos] ^ (byte << j & 0b10000000)
-					if screen[x_pos][y_pos] ^ (byte << j & 0b10000000) != 0: # Check if pixel collision.
-						registers[0xF] = 1 # add 1 to the flag register VF.
+					# Get current pixel and see if it's a '1' or a '0':
+					var pixel: int = 1 if (byte << j & 0b10000000) != 0 else 0
+					 # Check if pixel collision.
+					if screen[x_pos][y_pos] == 1 and pixel == 1:
+						# Turn off pixel on screen:
+						screen[x_pos][y_pos] = 0
+						registers[0xF] = 1
+					elif pixel == 1 and screen[x_pos][y_pos] == 0:
+						screen[x_pos][y_pos] = 1
 					x_pos += 1
+					if x_pos >= 64:
+						if not sprite_wrap:
+							break
+						elif sprite_wrap:
+							x_pos = x_pos % 64
+					
 				y_pos += 1
-				x_pos -= 8
-				# drawing when reaching end of screen.
-				if y_pos >= 32 or y_pos < 0:
-					if sprite_clipping == true:
+				if y_pos >= 32:
+					if not sprite_wrap:
 						break
-					elif sprite_clipping == false:
+					elif sprite_wrap:
 						y_pos = y_pos % 32
+				x_pos = X_POS
+				
 	
 		0xE000: # 1st nibble is 'E':
 			# Still more data in last 2 nibbles:
@@ -442,8 +441,8 @@ func _on_reset_vf_pressed() -> void:
 func _on_increment_i_pressed() -> void:
 	FX55_and_FX65_increment_I = not FX55_and_FX65_increment_I
 
-func _on_sprite_clipping_pressed() -> void:
-	sprite_clipping = not sprite_clipping
+func _on_sprite_wrapping_pressed() -> void:
+	sprite_wrap = not sprite_wrap
 
 func _on_bnnn_pressed() -> void:
 	use_V0_in_BNNN = not use_V0_in_BNNN
