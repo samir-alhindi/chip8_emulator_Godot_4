@@ -27,13 +27,6 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 25
 text = "Emulator settings"
 
-[node name="QuirksButton" type="Button" parent="CanvasLayer/Buttons"]
-unique_name_in_owner = true
-custom_minimum_size = Vector2(0, 70)
-layout_mode = 2
-theme_override_font_sizes/font_size = 25
-text = "Emulator quirks"
-
 [node name="QuitButton" type="Button" parent="CanvasLayer/Buttons"]
 custom_minimum_size = Vector2(0, 70)
 layout_mode = 2

@@ -36,21 +36,20 @@ static var background_color: Color = Color.BLACK
 ## color of the drawn sprites.
 static var sprite_color: Color = Color.WHITE
 ## Instructions per second.
-static var instruction_rate: int = 500
+static var instructions_per_frame: int = 11
 
-@export_category("Chip-8 Quirks")
 ## Set VY value to VX before bit shift (8XY6, 8XYE).
-@export var set_VX_to_VY_before_shift: bool = false
+var set_VX_to_VY_before_shift: bool = false
 ## The AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero.
-@export var _8xy1_8xy2_8xy3_reset_VF: bool = true
+var _8xy1_8xy2_8xy3_reset_VF: bool = false
 ## The save and load opcodes (Fx55 and Fx65) increment the index register.
-@export var FX55_and_FX65_increment_I: bool = false
+var FX55_and_FX65_increment_I: bool = false
 ## Sprites don't wrap around the screen.
-@export var sprite_clipping: bool = true
+var sprite_clipping: bool = false
 ## use VX with BNNN instead of V0
-@export var use_V0_in_BNNN: bool = true
+var use_V0_in_BNNN: bool = false
 ## Where the font data (1, 2, 3,...E, F) is stored in RAM.
-@export var font_offset: int = 0x50
+var font_offset: int = 0x50
 
 var font: PackedByteArray = [
 0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
@@ -94,22 +93,23 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	time_accumulator += delta
-	while time_accumulator >= (1.0 / instruction_rate) and not halted:
-		execute_opcode()
-		program_counter += 2  # Each Chip-8 instruction is 2 bytes
-		time_accumulator -= (1.0 / instruction_rate)
 	
-	time_accumulator_2 += delta
-	while time_accumulator_2 >= (1.0 / timers_decrement_rate):
-		queue_redraw()
+	while time_accumulator >= (1.0 / 60):
+		for i in range(instructions_per_frame):
+			if not halted:
+				execute_opcode()
+				program_counter += 2  # Each Chip-8 instruction is 2 bytes.
+		
 		if delay_timer > 0:
 			delay_timer -= 1
 		if sound_timer > 0:
 			beep.play()
 			sound_timer -= 1
-		time_accumulator_2 -= (1.0 / timers_decrement_rate)
-	
-	
+		
+		queue_redraw()
+		
+		time_accumulator -= (1.0 / 60)
+
 	if Input.is_anything_pressed() and halted:
 		var keys: = PackedStringArray([
 		"1", "2", "3", "C", "4", "5", "6", "D",
@@ -129,6 +129,8 @@ func _process(delta: float) -> void:
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("quit"):
 		get_tree().change_scene_to_file("uid://cygcpmr1ct6el")
+	elif event.is_action_pressed("reset"):
+		get_tree().reload_current_scene()
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -436,3 +438,12 @@ func _on_set_v_xto_v_yshift_pressed() -> void:
 
 func _on_reset_vf_pressed() -> void:
 	_8xy1_8xy2_8xy3_reset_VF = not _8xy1_8xy2_8xy3_reset_VF
+
+func _on_increment_i_pressed() -> void:
+	FX55_and_FX65_increment_I = not FX55_and_FX65_increment_I
+
+func _on_sprite_clipping_pressed() -> void:
+	sprite_clipping = not sprite_clipping
+
+func _on_bnnn_pressed() -> void:
+	use_V0_in_BNNN = not use_V0_in_BNNN

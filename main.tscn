@@ -28,52 +28,78 @@ render_target_update_mode = 4
 
 [node name="Emulator" parent="CanvasLayer/SubViewportContainer/SubViewport" instance=ExtResource("1_58a2i")]
 texture_filter = 1
-sprite_clipping = true
 
-[node name="VBoxContainer" type="VBoxContainer" parent="CanvasLayer"]
+[node name="QuirksContainer" type="VBoxContainer" parent="CanvasLayer"]
 anchors_preset = 11
 anchor_left = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = -505.0
-offset_right = 135.0
-offset_bottom = -554.0
+offset_right = -2.0
+offset_bottom = -254.0
 grow_horizontal = 0
 grow_vertical = 2
 theme = SubResource("Theme_e7l4w")
 
-[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/QuirksContainer"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CanvasLayer/VBoxContainer/HBoxContainer"]
+[node name="Label" type="Label" parent="CanvasLayer/QuirksContainer/HBoxContainer"]
 layout_mode = 2
 text = "set VX to VY before shift (8XY6, 8XYE)."
 
-[node name="SetVXtoVYshift" type="CheckButton" parent="CanvasLayer/VBoxContainer/HBoxContainer"]
+[node name="SetVXtoVYshift" type="CheckButton" parent="CanvasLayer/QuirksContainer/HBoxContainer"]
 layout_mode = 2
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="CanvasLayer/VBoxContainer"]
+[node name="HBoxContainer2" type="HBoxContainer" parent="CanvasLayer/QuirksContainer"]
 layout_mode = 2
 
-[node name="Label" type="Label" parent="CanvasLayer/VBoxContainer/HBoxContainer2"]
+[node name="Label" type="Label" parent="CanvasLayer/QuirksContainer/HBoxContainer2"]
 layout_mode = 2
 text = "8XY1, 8XY2, and 8XY3 reset the VF register."
 
-[node name="ResetVF" type="CheckButton" parent="CanvasLayer/VBoxContainer/HBoxContainer2"]
+[node name="ResetVF" type="CheckButton" parent="CanvasLayer/QuirksContainer/HBoxContainer2"]
 layout_mode = 2
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="CanvasLayer/VBoxContainer"]
+[node name="HBoxContainer3" type="HBoxContainer" parent="CanvasLayer/QuirksContainer"]
 layout_mode = 2
 
-[node name="HBoxContainer4" type="HBoxContainer" parent="CanvasLayer/VBoxContainer"]
+[node name="Label" type="Label" parent="CanvasLayer/QuirksContainer/HBoxContainer3"]
+layout_mode = 2
+text = "FX55 and FX65 increment Index register"
+
+[node name="IncrementI" type="CheckButton" parent="CanvasLayer/QuirksContainer/HBoxContainer3"]
 layout_mode = 2
 
-[node name="HBoxContainer5" type="HBoxContainer" parent="CanvasLayer/VBoxContainer"]
+[node name="HBoxContainer4" type="HBoxContainer" parent="CanvasLayer/QuirksContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CanvasLayer/QuirksContainer/HBoxContainer4"]
+layout_mode = 2
+text = "sprite clipping"
+
+[node name="SpriteClipping" type="CheckButton" parent="CanvasLayer/QuirksContainer/HBoxContainer4"]
+layout_mode = 2
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="CanvasLayer/QuirksContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CanvasLayer/QuirksContainer/HBoxContainer5"]
+layout_mode = 2
+text = "Use VX with BNNN instead of V0"
+
+[node name="BNNN" type="CheckButton" parent="CanvasLayer/QuirksContainer/HBoxContainer5"]
+layout_mode = 2
+
+[node name="HBoxContainer6" type="HBoxContainer" parent="CanvasLayer/QuirksContainer"]
 layout_mode = 2
 
 [node name="GameBorder" type="ColorRect" parent="."]
 offset_right = 770.0
 offset_bottom = 386.0
 
-[connection signal="pressed" from="CanvasLayer/VBoxContainer/HBoxContainer/SetVXtoVYshift" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_set_v_xto_v_yshift_pressed"]
-[connection signal="pressed" from="CanvasLayer/VBoxContainer/HBoxContainer2/ResetVF" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_reset_vf_pressed"]
+[connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer/SetVXtoVYshift" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_set_v_xto_v_yshift_pressed"]
+[connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer2/ResetVF" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_reset_vf_pressed"]
+[connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer3/IncrementI" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_increment_i_pressed"]
+[connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer4/SpriteClipping" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_sprite_clipping_pressed"]
+[connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer5/BNNN" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_bnnn_pressed"]
