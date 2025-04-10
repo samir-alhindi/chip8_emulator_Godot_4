@@ -1,42 +1,60 @@
 extends Node
 
-const ROM_NAME_LABEL: PackedScene = preload("res://rom_name_label.tscn")
+const BUTTON_THEME: Theme = preload("uid://bvrvntssv7s4j")
+var path: String = ""
+var file: bool = false
 
 func _ready() -> void:
 	RenderingServer.set_default_clear_color(Color.BLACK)
-	$CanvasLayer/Buttons.show()
-	$CanvasLayer/Roms.hide()
-	$CanvasLayer/Settings.hide()
-
-func _on_load_rom_button_pressed() -> void:
-	$CanvasLayer/Buttons.hide()
-	$CanvasLayer/Roms.show()
 	
-	# Load ROMs as buttons:
-	var ROMs_path: StringName = "res://ROMs/"
-	var dir: DirAccess = DirAccess.open(ROMs_path)
+	path = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
+	set_layout()
+
+func set_layout() -> void:
+	file = false
+	for button: Button in %"FolderNames".get_children():
+		button.queue_free()
+	%"Path".text = path
+	var up_button: Button = Button.new()
+	up_button.text = "<---"
+	up_button.pressed.connect(go_up)
+	up_button.theme = BUTTON_THEME
+	up_button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	%FolderNames.add_child(up_button)
+	var dir: DirAccess = DirAccess.open(path)
 	dir.list_dir_begin()
 	var file_name: String = dir.get_next()
 	while file_name != "":
-		var label: Label = ROM_NAME_LABEL.instantiate()
-		label.text = file_name
-		$CanvasLayer/Roms/HBoxContainer/RomNames.add_child(label)
+		var button: Button = Button.new()
+		button.text = file_name
+		button.theme = BUTTON_THEME
+		button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+		%FolderNames.add_child(button)
+		if dir.current_is_dir():
+			button.pressed.connect(open_folder.bind(file_name))
+		else:
+			button.pressed.connect(open_file.bind(file_name))
+			if not file_name.get_extension() in ["ch8", "c8"]:
+				button.queue_free()
 		file_name = dir.get_next()
 
-func _on_settings_pressed() -> void:
-	$CanvasLayer/Buttons.hide()
-	$CanvasLayer/Settings.show()
+func open_folder(folder_name: String) -> void:
+	if file == true:
+		path = path.get_base_dir()
+	path = path + "/" + folder_name
+	set_layout()
 
-func _on_quit_button_pressed() -> void:
-	get_tree().quit()
+func open_file(file_name: String) -> void:
+	if file == true:
+		path = path.get_base_dir()
+	path = path + "/" + file_name
+	%"Path".text = path
+	file = true
+	Emulator.game_path = path
+	get_tree().change_scene_to_file("uid://d531712tl7rh")
 
-func _on_bg_picker_button_color_changed(color: Color) -> void:
-	Emulator.background_color = color
-
-func _on_sprite_picker_button_color_changed(color: Color) -> void:
-	Emulator.sprite_color = color
-
-# Return from Settings to main menu
-func _on_return_pressed() -> void:
-	$CanvasLayer/Buttons.show()
-	$CanvasLayer/Settings.hide()
+func go_up() -> void:
+	if file == true:
+		path = path.get_base_dir()
+	path = path.get_base_dir()
+	set_layout()

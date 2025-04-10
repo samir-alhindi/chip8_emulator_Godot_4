@@ -29,7 +29,7 @@ var last_key_pressed: String
 
 
 ## ROM to load.
-static var game_name: String
+static var game_path: String
 ## color of the black screen.
 static var background_color: Color = Color.BLACK
 ## color of the drawn sprites.
@@ -87,7 +87,7 @@ func _ready() -> void:
 		RAM[offset] = i
 		offset += 1
 	
-	var rom: PackedByteArray = open_read_and_get_ROM("res://ROMs/" + game_name) 
+	var rom: PackedByteArray = open_read_and_get_ROM(game_path) 
 	load_rom_into_ram(rom)
 
 func _process(delta: float) -> void:

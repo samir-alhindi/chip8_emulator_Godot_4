@@ -7,104 +7,35 @@ script = ExtResource("1_3it3w")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
-[node name="Buttons" type="VBoxContainer" parent="CanvasLayer"]
-visible = false
-anchors_preset = 9
-anchor_bottom = 1.0
-offset_right = 391.0
-grow_vertical = 2
-mouse_filter = 2
-
-[node name="LoadRomButton" type="Button" parent="CanvasLayer/Buttons"]
-custom_minimum_size = Vector2(0, 70)
-layout_mode = 2
-theme_override_font_sizes/font_size = 25
-text = "Load ROM"
-
-[node name="Settings" type="Button" parent="CanvasLayer/Buttons"]
-custom_minimum_size = Vector2(0, 70)
-layout_mode = 2
-theme_override_font_sizes/font_size = 25
-text = "Emulator settings"
-
-[node name="QuitButton" type="Button" parent="CanvasLayer/Buttons"]
-custom_minimum_size = Vector2(0, 70)
-layout_mode = 2
-theme_override_font_sizes/font_size = 25
-text = "Quit"
-
-[node name="Roms" type="ScrollContainer" parent="CanvasLayer"]
-visible = false
+[node name="Folders" type="ScrollContainer" parent="CanvasLayer"]
 anchors_preset = 9
 anchor_bottom = 1.0
 offset_left = 21.0
-offset_right = 879.0
-offset_bottom = -42.0
+offset_right = 615.0
+offset_bottom = -84.0
 grow_vertical = 2
 pivot_offset = Vector2(444, 176)
 mouse_filter = 2
 
-[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/Roms"]
+[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/Folders"]
 layout_mode = 2
 size_flags_horizontal = 0
 
-[node name="RomNames" type="VBoxContainer" parent="CanvasLayer/Roms/HBoxContainer"]
+[node name="FolderNames" type="VBoxContainer" parent="CanvasLayer/Folders/HBoxContainer"]
+unique_name_in_owner = true
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Return" type="Button" parent="CanvasLayer/Roms/HBoxContainer"]
-layout_mode = 2
-size_flags_horizontal = 8
-size_flags_vertical = 0
+[node name="Path" type="Label" parent="CanvasLayer"]
+unique_name_in_owner = true
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -35.0
+offset_right = 118.0
+grow_vertical = 0
 theme_override_font_sizes/font_size = 25
-text = "Return to Main Menu"
-
-[node name="Settings" type="ScrollContainer" parent="CanvasLayer"]
-visible = false
-anchors_preset = 4
-anchor_top = 0.5
-anchor_bottom = 0.5
-offset_left = 17.0
-offset_top = -288.0
-offset_right = 855.0
-offset_bottom = 300.0
-grow_vertical = 2
-
-[node name="HBoxContainer" type="HBoxContainer" parent="CanvasLayer/Settings"]
-layout_mode = 2
-theme_override_constants/separation = 30
-
-[node name="Left" type="VBoxContainer" parent="CanvasLayer/Settings/HBoxContainer"]
-layout_mode = 2
-
-[node name="BackgroundLabel" type="Label" parent="CanvasLayer/Settings/HBoxContainer/Left"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 25
-text = "Background Color"
-
-[node name="SpriteLabel" type="Label" parent="CanvasLayer/Settings/HBoxContainer/Left"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 25
-text = "Sprites Color"
-
-[node name="Right" type="VBoxContainer" parent="CanvasLayer/Settings/HBoxContainer"]
-layout_mode = 2
-
-[node name="BGPickerButton" type="ColorPickerButton" parent="CanvasLayer/Settings/HBoxContainer/Right"]
-layout_mode = 2
-text = "testtesttesttest"
-edit_alpha = false
-
-[node name="SpritePickerButton" type="ColorPickerButton" parent="CanvasLayer/Settings/HBoxContainer/Right"]
-layout_mode = 2
-text = "testtesttesttest"
-color = Color(1, 1, 1, 1)
-edit_alpha = false
-
-[node name="Return" type="Button" parent="CanvasLayer/Settings/HBoxContainer"]
-layout_mode = 2
-theme_override_font_sizes/font_size = 25
-text = "Return to Main Menu"
+text = "Path here"
 
 [node name="Credit" type="Label" parent="CanvasLayer"]
 anchors_preset = 3
@@ -119,9 +50,6 @@ grow_vertical = 0
 theme_override_font_sizes/font_size = 25
 text = "CHIP-8 Emulator by Samir-Alhindi"
 
-[connection signal="pressed" from="CanvasLayer/Buttons/LoadRomButton" to="." method="_on_load_rom_button_pressed"]
-[connection signal="pressed" from="CanvasLayer/Buttons/Settings" to="." method="_on_settings_pressed"]
-[connection signal="pressed" from="CanvasLayer/Buttons/QuitButton" to="." method="_on_quit_button_pressed"]
-[connection signal="color_changed" from="CanvasLayer/Settings/HBoxContainer/Right/BGPickerButton" to="." method="_on_bg_picker_button_color_changed"]
-[connection signal="color_changed" from="CanvasLayer/Settings/HBoxContainer/Right/SpritePickerButton" to="." method="_on_sprite_picker_button_color_changed"]
-[connection signal="pressed" from="CanvasLayer/Settings/HBoxContainer/Return" to="." method="_on_return_pressed"]
+[node name="Button" type="Button" parent="."]
+offset_right = 8.0
+offset_bottom = 8.0
