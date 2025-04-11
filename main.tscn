@@ -7,6 +7,20 @@ Label/font_sizes/font_size = 22
 
 [node name="Main" type="Node2D"]
 
+[node name="Background" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 1298.0
+offset_bottom = 668.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0, 0, 0, 1)
+
+[node name="GameBorder" type="ColorRect" parent="."]
+offset_right = 770.0
+offset_bottom = 386.0
+
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
 [node name="SubViewportContainer" type="SubViewportContainer" parent="CanvasLayer"]
@@ -26,8 +40,14 @@ canvas_item_default_texture_filter = 0
 size = Vector2i(64, 32)
 render_target_update_mode = 4
 
-[node name="Emulator" parent="CanvasLayer/SubViewportContainer/SubViewport" instance=ExtResource("1_58a2i")]
+[node name="Emulator" parent="CanvasLayer/SubViewportContainer/SubViewport" node_paths=PackedStringArray("game_border", "sub_viewport_container", "quirks_container", "colors_container", "BG_color_picker", "sprite_color_picker") instance=ExtResource("1_58a2i")]
 texture_filter = 1
+game_border = NodePath("../../../../GameBorder")
+sub_viewport_container = NodePath("../..")
+quirks_container = NodePath("../../../QuirksContainer")
+colors_container = NodePath("../../../ColorContainer")
+BG_color_picker = NodePath("../../../ColorContainer/Right/BGColorPickerButton")
+sprite_color_picker = NodePath("../../../ColorContainer/Right/SpriteColorPickerButton")
 
 [node name="QuirksContainer" type="VBoxContainer" parent="CanvasLayer"]
 anchors_preset = -1
@@ -96,12 +116,45 @@ layout_mode = 2
 [node name="HBoxContainer6" type="HBoxContainer" parent="CanvasLayer/QuirksContainer"]
 layout_mode = 2
 
-[node name="GameBorder" type="ColorRect" parent="."]
-offset_right = 770.0
-offset_bottom = 386.0
+[node name="ColorContainer" type="HBoxContainer" parent="CanvasLayer"]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -472.0
+offset_top = 28.0
+offset_right = 183.0
+offset_bottom = 372.0
+grow_horizontal = 0
+
+[node name="Left" type="VBoxContainer" parent="CanvasLayer/ColorContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="CanvasLayer/ColorContainer/Left"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 25
+text = "Background color"
+
+[node name="Label2" type="Label" parent="CanvasLayer/ColorContainer/Left"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 25
+text = "Sprites color"
+
+[node name="Right" type="VBoxContainer" parent="CanvasLayer/ColorContainer"]
+layout_mode = 2
+
+[node name="BGColorPickerButton" type="ColorPickerButton" parent="CanvasLayer/ColorContainer/Right"]
+layout_mode = 2
+text = "background here"
+
+[node name="SpriteColorPickerButton" type="ColorPickerButton" parent="CanvasLayer/ColorContainer/Right"]
+layout_mode = 2
+text = "background here"
+color = Color(1, 1, 1, 1)
 
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer/SetVXtoVYshift" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_set_v_xto_v_yshift_pressed"]
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer2/ResetVF" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_reset_vf_pressed"]
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer3/IncrementI" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_increment_i_pressed"]
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer4/SpriteWrapping" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_sprite_wrapping_pressed"]
 [connection signal="pressed" from="CanvasLayer/QuirksContainer/HBoxContainer5/BNNN" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_bnnn_pressed"]
+[connection signal="color_changed" from="CanvasLayer/ColorContainer/Right/BGColorPickerButton" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_BG_color_picker_button_color_changed"]
+[connection signal="color_changed" from="CanvasLayer/ColorContainer/Right/SpriteColorPickerButton" to="CanvasLayer/SubViewportContainer/SubViewport/Emulator" method="_on_sprite_color_picker_button_color_changed"]

@@ -26,7 +26,13 @@ var last_opcode: int
 var last_key_pressed: String
 
 @onready var beep: AudioStreamPlayer = %Beep
-
+@export var game_border: ColorRect
+@export var sub_viewport_container: SubViewportContainer
+@export var quirks_container: VBoxContainer
+@export var colors_container: HBoxContainer
+@export var BG_color_picker: ColorPickerButton
+@export var sprite_color_picker: ColorPickerButton
+var is_fullscreen: bool = false
 
 ## ROM to load.
 static var game_path: String
@@ -76,7 +82,6 @@ func _ready() -> void:
 	registers.resize(16)
 	registers.fill(0x0000)
 	screen.resize(64)
-	RenderingServer.set_default_clear_color(background_color)
 	for array: PackedByteArray in screen:
 		array.resize(32)
 		array.fill(0x0000)
@@ -89,6 +94,12 @@ func _ready() -> void:
 	
 	var rom: PackedByteArray = open_read_and_get_ROM(game_path) 
 	load_rom_into_ram(rom)
+	
+	# Init graphics stuff:
+	BG_color_picker.color = background_color
+	sprite_color_picker.color = sprite_color
+	RenderingServer.set_default_clear_color(background_color)
+	
 
 func _process(delta: float) -> void:
 	time_accumulator += delta
@@ -127,9 +138,26 @@ func _process(delta: float) -> void:
 
 func _input(event: InputEvent) -> void:
 	if event.is_action_pressed("quit"):
-		get_tree().change_scene_to_file("uid://cygcpmr1ct6el")
+		get_tree().change_scene_to_file("uid://d4d4f8y0qsofo")
 	elif event.is_action_pressed("reset"):
 		get_tree().reload_current_scene()
+	elif event.is_action_pressed("fullscreen"):
+		if not is_fullscreen:
+			is_fullscreen = true
+			var fullscreen_width: int = ProjectSettings.get("display/window/size/viewport_width")
+			var fullscreen_height: int = ProjectSettings.get("display/window/size/viewport_height")
+			var fullscreen_size := Vector2(Vector2(fullscreen_width, fullscreen_height))
+			sub_viewport_container.size = fullscreen_size
+			sub_viewport_container.stretch_shrink = 20
+			quirks_container.hide()
+			colors_container.hide()
+		elif is_fullscreen:
+			is_fullscreen = false
+			var screen_res := Vector2(768, 384)
+			sub_viewport_container.size = screen_res
+			sub_viewport_container.stretch_shrink = 12
+			quirks_container.show()
+			colors_container.show()
 
 func open_read_and_get_ROM(ROM_file_path: String) -> PackedByteArray:
 	var ROM: FileAccess = FileAccess.open(ROM_file_path, FileAccess.READ)
@@ -431,7 +459,6 @@ func _draw() -> void:
 				var pixel: Rect2 = Rect2(Vector2(x, y), Vector2(1, 1))
 				draw_rect(pixel, sprite_color, true)
 
-
 func _on_set_v_xto_v_yshift_pressed() -> void:
 	set_VX_to_VY_before_shift = not set_VX_to_VY_before_shift
 
@@ -446,3 +473,10 @@ func _on_sprite_wrapping_pressed() -> void:
 
 func _on_bnnn_pressed() -> void:
 	use_V0_in_BNNN = not use_V0_in_BNNN
+
+func _on_BG_color_picker_button_color_changed(color: Color) -> void:
+	background_color = color
+	RenderingServer.set_default_clear_color(color)
+
+func _on_sprite_color_picker_button_color_changed(color: Color) -> void:
+	sprite_color = color
