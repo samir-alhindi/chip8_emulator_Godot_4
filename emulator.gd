@@ -25,6 +25,8 @@ var halted: bool = false
 var last_opcode: int
 var last_key_pressed: String
 
+var emulator_running: bool = true
+
 @onready var beep: AudioStreamPlayer = %Beep
 @export var game_border: ColorRect
 @export var sub_viewport_container: SubViewportContainer
@@ -32,6 +34,7 @@ var last_key_pressed: String
 @export var colors_container: HBoxContainer
 @export var BG_color_picker: ColorPickerButton
 @export var sprite_color_picker: ColorPickerButton
+@export var pause_button: Button
 var is_fullscreen: bool = false
 
 ## ROM to load.
@@ -44,17 +47,17 @@ static var sprite_color: Color = Color.WHITE
 static var instructions_per_frame: int = 11
 
 ## Set VY value to VX before bit shift (8XY6, 8XYE).
-var set_VX_to_VY_before_shift: bool = false
+static var set_VX_to_VY_before_shift: bool = false
 ## The AND, OR and XOR opcodes (8xy1, 8xy2 and 8xy3) reset the flags register to zero.
-var _8xy1_8xy2_8xy3_reset_VF: bool = false
+static var _8xy1_8xy2_8xy3_reset_VF: bool = false
 ## The save and load opcodes (Fx55 and Fx65) increment the index register.
-var FX55_and_FX65_increment_I: bool = false
+static var FX55_and_FX65_increment_I: bool = false
 ## Sprites wrap around the screen instead of being clipped.
-var sprite_wrap: bool = false
+static var sprite_wrap: bool = false
 ## use VX with BNNN instead of V0
-var use_V0_in_BNNN: bool = false
+static var use_V0_in_BNNN: bool = false
 ## Where the font data (1, 2, 3,...E, F) is stored in RAM.
-var font_offset: int = 0x50
+static var font_offset: int = 0x50
 
 var font: PackedByteArray = [
 0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
@@ -100,6 +103,17 @@ func _ready() -> void:
 	sprite_color_picker.color = sprite_color
 	RenderingServer.set_default_clear_color(background_color)
 	
+	# Init buttons:
+	if set_VX_to_VY_before_shift:
+		%SetVXtoVYshift.button_pressed = true
+	if _8xy1_8xy2_8xy3_reset_VF:
+		%ResetVF.button_pressed = true
+	if FX55_and_FX65_increment_I:
+		%IncrementI.button_pressed = true
+	if sprite_wrap:
+		%SpriteWrapping.button_pressed = true
+	if use_V0_in_BNNN:
+		%BNNN.button_pressed = true
 
 func _process(delta: float) -> void:
 	time_accumulator += delta
@@ -137,11 +151,7 @@ func _process(delta: float) -> void:
 			halted = false
 
 func _input(event: InputEvent) -> void:
-	if event.is_action_pressed("quit"):
-		get_tree().change_scene_to_file("uid://d4d4f8y0qsofo")
-	elif event.is_action_pressed("reset"):
-		get_tree().reload_current_scene()
-	elif event.is_action_pressed("fullscreen"):
+	if event.is_action_pressed("fullscreen"):
 		if not is_fullscreen:
 			is_fullscreen = true
 			var fullscreen_width: int = ProjectSettings.get("display/window/size/viewport_width")
@@ -480,3 +490,21 @@ func _on_BG_color_picker_button_color_changed(color: Color) -> void:
 
 func _on_sprite_color_picker_button_color_changed(color: Color) -> void:
 	sprite_color = color
+
+func _on_pause_button_pressed() -> void:
+	emulator_running = not emulator_running
+	if emulator_running:
+		pause_button.text = "Pause"
+	elif not emulator_running:
+		pause_button.text = "Play"
+	set_process(emulator_running)
+	set_process_input(emulator_running)
+	set_process_unhandled_input(emulator_running)
+	set_process_unhandled_key_input(emulator_running)
+
+func _on_reset_button_pressed() -> void:
+	get_tree().reload_current_scene()
+
+
+func _on_change_rom_button_pressed() -> void:
+	get_tree().change_scene_to_file("uid://d4d4f8y0qsofo")
